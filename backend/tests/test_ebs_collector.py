@@ -2,8 +2,11 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from backend.collectors.ebs import find_unattached_ebs_volumes
-
+from backend.collectors.ebs_collector import (
+    fetch_unattached_volumes,
+    fetch_unused_elastic_ips,
+    collect_ebs_and_elastic_ip_waste,
+)
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -48,7 +51,7 @@ class TestUnattachedEBSCollector:
         """A single unattached volume should be returned as a finding."""
         create_unattached_volume(self.ec2_client, size_gb=100)
 
-        findings = find_unattached_ebs_volumes(self.ec2_client)
+        findings = fetch_unattached_volumes("us-east-1")
 
         assert len(findings) == 1
         assert findings[0]["state"] == "available"
@@ -58,7 +61,7 @@ class TestUnattachedEBSCollector:
         """Volumes attached to an instance should not appear in findings."""
         create_attached_volume(self.ec2_client, self.ec2_resource)
 
-        findings = find_unattached_ebs_volumes(self.ec2_client)
+        findings = fetch_unattached_volumes("us-east-1")
 
         # Root volume is attached — should not be flagged
         assert len(findings) == 0
@@ -69,7 +72,7 @@ class TestUnattachedEBSCollector:
         create_unattached_volume(self.ec2_client, size_gb=50)
         create_unattached_volume(self.ec2_client, size_gb=200)
 
-        findings = find_unattached_ebs_volumes(self.ec2_client)
+        findings = fetch_unattached_volumes("us-east-1")
 
         assert len(findings) == 2
         sizes = {f["size_gb"] for f in findings}
@@ -77,7 +80,7 @@ class TestUnattachedEBSCollector:
 
     def test_returns_empty_when_no_volumes(self):
         """No volumes in account should return empty list, not an error."""
-        findings = find_unattached_ebs_volumes(self.ec2_client)
+        findings = fetch_unattached_volumes("us-east-1")
 
         assert findings == []
 
@@ -85,7 +88,7 @@ class TestUnattachedEBSCollector:
         """Each finding must have the fields the AI agent needs to reason over."""
         create_unattached_volume(self.ec2_client, size_gb=100, volume_type="gp2")
 
-        findings = find_unattached_ebs_volumes(self.ec2_client)
+        findings = fetch_unattached_volumes("us-east-1")
 
         assert len(findings) == 1
         finding = findings[0]
@@ -102,7 +105,7 @@ class TestUnattachedEBSCollector:
         """gp2 costs $0.10/GB/month — 100GB volume = $10/month."""
         create_unattached_volume(self.ec2_client, size_gb=100, volume_type="gp2")
 
-        findings = find_unattached_ebs_volumes(self.ec2_client)
+        findings = fetch_unattached_volumes("us-east-1")
 
         assert findings[0]["estimated_monthly_cost_usd"] == pytest.approx(10.0)
 
@@ -111,7 +114,7 @@ class TestUnattachedEBSCollector:
         create_unattached_volume(self.ec2_client, size_gb=100, volume_type="gp2")
         create_unattached_volume(self.ec2_client, size_gb=100, volume_type="gp3")
 
-        findings = find_unattached_ebs_volumes(self.ec2_client)
+        findings = fetch_unattached_volumes("us-east-1")
         by_type = {f["volume_type"]: f for f in findings}
 
         # gp2 = $0.10/GB, gp3 = $0.08/GB
