@@ -6,6 +6,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green)
 ![LangGraph](https://img.shields.io/badge/LangGraph-multiagent-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
+![Dashboard](docs/dashboard.png)
 
 ---
 
