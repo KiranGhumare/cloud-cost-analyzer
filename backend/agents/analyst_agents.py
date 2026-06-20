@@ -66,10 +66,13 @@ Each finding must have: resource_id, finding_type, evidence, recommendation, est
     text = re.sub(r'```\s*', '', text)
     json_match = re.search(r'\[.*\]', text, re.DOTALL)
     if json_match:
-        state["ec2_findings"] = json.loads(json_match.group())
+        try:
+            state["ec2_findings"] = json.loads(json_match.group())
+        except json.JSONDecodeError:
+            state["ec2_findings"] = []
     else:
         state["ec2_findings"] = []
-    
+
     return state
 
 def storage_analyst_node(state: AnalysisState) -> AnalysisState:
@@ -107,7 +110,10 @@ Each finding must have: resource_id, finding_type, evidence, recommendation, est
     text = re.sub(r'```\s*', '', text)
     json_match = re.search(r'\[.*\]', text, re.DOTALL)
     if json_match:
-        state["storage_findings"] = json.loads(json_match.group())
+        try:
+            state["storage_findings"] = json.loads(json_match.group())
+        except json.JSONDecodeError:
+            state["storage_findings"] = []
     else:
         state["storage_findings"] = []
     
@@ -142,7 +148,10 @@ Add a field "total_potential_saving" as the last item.
     text = re.sub(r'```\s*', '', text)
     json_match = re.search(r'\[.*\]', text, re.DOTALL)
     if json_match:
-        state["final_findings"] = json.loads(json_match.group())
+        try:
+            state["final_findings"] = json.loads(json_match.group())
+        except json.JSONDecodeError:
+            state["final_findings"] = []
     else:
         state["final_findings"] = []
 
